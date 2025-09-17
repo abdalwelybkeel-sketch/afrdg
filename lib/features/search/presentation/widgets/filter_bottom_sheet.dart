@@ -115,7 +115,7 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                         selectedColor: AppTheme.primaryPink.withOpacity(0.3),
                         checkmarkColor: AppTheme.primaryPink,
                       ),
-                      ..._categories.map((category) {
+                      for (final category in _categories)
                         return FilterChip(
                           label: Text(category),
                           selected: _selectedCategory == category,
@@ -127,7 +127,6 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                           selectedColor: AppTheme.primaryPink.withOpacity(0.3),
                           checkmarkColor: AppTheme.primaryPink,
                         );
-                      }).toList(),
                     ],
                   ),
 
@@ -176,7 +175,7 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  ..._sortOptions.map((option) {
+                  for (final option in _sortOptions)
                     return RadioListTile<String>(
                       title: Text(option['label']!),
                       value: option['value']!,
@@ -188,7 +187,6 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                         });
                       },
                     );
-                  }).toList(),
 
                   const SizedBox(height: 32),
 

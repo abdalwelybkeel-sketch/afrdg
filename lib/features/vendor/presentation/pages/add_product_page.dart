@@ -25,12 +25,12 @@ class _AddProductPageState extends State<AddProductPage> {
 
   String _selectedCategory = 'باقات الحب';
   bool _isFeatured = false;
-  List<String> _imageUrls = [];
-  List<File> _imageFiles = [];
+  final List<String> _imageUrls = [];
+  final List<File> _imageFiles = [];
   final ImagePicker _picker = ImagePicker();
-  List<String> _sizes = [];
-  List<String> _colors = [];
-  List<String> _tags = [];
+  final List<String> _sizes = [];
+  final List<String> _colors = [];
+  final List<String> _tags = [];
 
   final List<String> _categories = [
     'باقات الحب',
@@ -129,9 +129,11 @@ class _AddProductPageState extends State<AddProductPage> {
         _imageUrls.add(downloadUrl);
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('فشل رفع الصور')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('فشل رفع الصور')),
+        );
+      }
     }
   }
 
@@ -144,9 +146,11 @@ class _AddProductPageState extends State<AddProductPage> {
         });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('فشل اختيار الصور')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('فشل اختيار الصور')),
+        );
+      }
     }
   }
 
@@ -554,7 +558,7 @@ class _AddProductPageState extends State<AddProductPage> {
                         height: 20,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(
+                          valueColor: AlwaysStoppedAnimation(
                             Colors.white,
                           ),
                         ),

@@ -10,6 +10,8 @@ class AddressModel {
   final String address;
   final String city;
   final String phone;
+  final double? latitude;
+  final double? longitude;
   final bool isDefault;
   final DateTime createdAt;
 
@@ -20,6 +22,8 @@ class AddressModel {
     required this.address,
     required this.city,
     required this.phone,
+    this.latitude,
+    this.longitude,
     this.isDefault = false,
     required this.createdAt,
   });
@@ -33,6 +37,8 @@ class AddressModel {
       address: data['address'] ?? '',
       city: data['city'] ?? '',
       phone: data['phone'] ?? '',
+      latitude: data['latitude']?.toDouble(),
+      longitude: data['longitude']?.toDouble(),
       isDefault: data['isDefault'] ?? false,
       createdAt: (data['createdAt'] as Timestamp).toDate(),
     );
@@ -45,6 +51,8 @@ class AddressModel {
       'address': address,
       'city': city,
       'phone': phone,
+      'latitude': latitude,
+      'longitude': longitude,
       'isDefault': isDefault,
       'createdAt': Timestamp.fromDate(createdAt),
     };
@@ -55,6 +63,8 @@ class AddressModel {
     String? address,
     String? city,
     String? phone,
+    double? latitude,
+    double? longitude,
     bool? isDefault,
   }) {
     return AddressModel(
@@ -64,6 +74,8 @@ class AddressModel {
       address: address ?? this.address,
       city: city ?? this.city,
       phone: phone ?? this.phone,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
       isDefault: isDefault ?? this.isDefault,
       createdAt: createdAt,
     );
@@ -108,6 +120,8 @@ class AddressesProvider extends ChangeNotifier {
     required String address,
     required String city,
     required String phone,
+    double? latitude,
+    double? longitude,
     bool isDefault = false,
   }) async {
     try {
@@ -126,6 +140,8 @@ class AddressesProvider extends ChangeNotifier {
         address: address,
         city: city,
         phone: phone,
+        latitude: latitude,
+        longitude: longitude,
         isDefault: isDefault,
         createdAt: DateTime.now(),
       );
@@ -141,6 +157,8 @@ class AddressesProvider extends ChangeNotifier {
         address: address,
         city: city,
         phone: phone,
+        latitude: latitude,
+        longitude: longitude,
         isDefault: isDefault,
         createdAt: DateTime.now(),
       ));

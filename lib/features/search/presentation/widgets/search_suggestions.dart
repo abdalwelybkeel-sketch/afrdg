@@ -41,7 +41,7 @@ class SearchSuggestions extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 16),
-                ...searchProvider.recentSearches.map((search) {
+                for (final search in searchProvider.recentSearches)
                   return ListTile(
                     leading: Icon(
                       Icons.history,
@@ -61,7 +61,6 @@ class SearchSuggestions extends StatelessWidget {
                       ),
                     ),
                   );
-                }).toList(),
                 const SizedBox(height: 24),
               ],
 

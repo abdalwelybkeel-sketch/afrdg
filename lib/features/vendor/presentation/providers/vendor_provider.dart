@@ -57,16 +57,25 @@ class VendorProvider extends ChangeNotifier {
   }
 
   Future<void> _loadVendorOrders(String vendorId) async {
-    // Get orders that contain products from this vendor
+    // Get orders for this vendor's products
     final querySnapshot = await FirebaseService.ordersCollection
+        .where('vendorId', isEqualTo: vendorId)
         .orderBy('createdAt', descending: true)
         .get();
 
-    _vendorOrders = querySnapshot.docs
+    final allOrders = querySnapshot.docs
         .map((doc) => OrderModel.fromFirestore(doc))
-        .where((order) => order.items.any((item) => 
-            _vendorProducts.any((product) => product.id == item.productId)))
         .toList();
+
+    // Filter orders that contain this vendor's products
+    _vendorOrders = [];
+    for (final order in allOrders) {
+      final hasVendorProducts = order.items.any((item) => 
+          _vendorProducts.any((product) => product.id == item.productId));
+      if (hasVendorProducts) {
+        _vendorOrders.add(order);
+      }
+    }
   }
 
   void _calculateAnalytics() {
@@ -74,7 +83,7 @@ class VendorProvider extends ChangeNotifier {
     _totalOrders = _vendorOrders.length;
     _totalRevenue = _vendorOrders
         .where((order) => order.status != OrderStatus.cancelled)
-        .fold(0, (sum, order) => sum + order.total);
+        .fold(0, (total, order) => total + order.total);
 
     // Calculate monthly revenue
     _monthlyRevenue.clear();

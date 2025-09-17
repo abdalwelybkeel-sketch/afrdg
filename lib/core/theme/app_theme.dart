@@ -23,11 +23,22 @@ class AppTheme {
         primary: primaryPink,
         secondary: accentPurple,
         surface: softWhite,
-        background: Color(0xFFFFF8FA),
         onPrimary: Colors.white,
         onSecondary: Colors.white,
         onSurface: darkGrey,
-        onBackground: darkGrey,
+      ),
+      
+      // Scaffold Background
+      scaffoldBackgroundColor: const Color(0xFFFFF8FA),
+      
+      // Color Scheme
+      colorScheme: const ColorScheme.light(
+        primary: primaryPink,
+        secondary: accentPurple,
+        surface: softWhite,
+        onPrimary: Colors.white,
+        onSecondary: Colors.white,
+        onSurface: darkGrey,
       ),
       
       // App Bar Theme

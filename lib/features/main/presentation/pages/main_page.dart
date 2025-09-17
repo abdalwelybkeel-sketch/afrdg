@@ -3,10 +3,9 @@ import 'package:provider/provider.dart';
 
 import '../../../../core/widgets/bottom_navigation_bar.dart';
 import '../../../../core/providers/navigation_provider.dart';
-import '../../../../core/providers/app_providers.dart';
 import '../../../home/presentation/pages/home_page.dart';
 import '../../../cart/presentation/pages/cart_page.dart';
-import '../../../offers/presentation/pages/offers_page.dart';
+import '../../../orders/presentation/pages/orders_page.dart';
 import '../../../search/presentation/pages/search_page.dart';
 import '../../../profile/presentation/pages/profile_page.dart';
 
@@ -23,7 +22,7 @@ class MainPage extends StatelessWidget {
             children: const [
               HomePage(),
               CartPage(),
-              OffersPage(),
+              OrdersPage(),
               SearchPage(),
               ProfilePage(),
             ],

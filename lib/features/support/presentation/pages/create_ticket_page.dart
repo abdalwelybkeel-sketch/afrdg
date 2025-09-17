@@ -256,7 +256,7 @@ class _CreateTicketPageState extends State<CreateTicketPage> {
                               width: 20,
                               height: 20,
                               child: CircularProgressIndicator(
-                                strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation(
                                 valueColor: AlwaysStoppedAnimation<Color>(
                                   Colors.white,
                                 ),

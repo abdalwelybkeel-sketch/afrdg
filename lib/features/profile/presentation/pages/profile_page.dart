@@ -201,11 +201,13 @@ class ProfilePage extends StatelessWidget {
 
                           if (confirmed == true) {
                             await authProvider.signOut();
-                            Navigator.pushNamedAndRemoveUntil(
-                              context,
-                              AppConfig.loginRoute,
-                              (route) => false,
-                            );
+                            if (mounted) {
+                              Navigator.pushNamedAndRemoveUntil(
+                                context,
+                                AppConfig.loginRoute,
+                                (route) => false,
+                              );
+                            }
                           }
                         },
                       ),

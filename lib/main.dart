@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:provider/provider.dart';
@@ -20,7 +19,9 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Initialize Firebase
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 
   // Initialize Stripe with a default test key (or skip if not needed)
   Stripe.publishableKey = 'pk_test_51xxxxxxxxxxxxxxxxxxxxxxxxxxxx'; // استخدم مفتاح اختبار Stripe أو اتركه فارغًا إذا لم تكن بحاجة إلى Stripe الآن

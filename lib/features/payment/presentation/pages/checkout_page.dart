@@ -9,8 +9,6 @@ import '../../../orders/presentation/providers/orders_provider.dart';
 import '../../../addresses/presentation/providers/addresses_provider.dart';
 import '../../../payment/presentation/providers/payment_provider.dart';
 
-// Add AddressModel import
-import '../../../addresses/presentation/providers/addresses_provider.dart' show AddressModel;
 
 class CheckoutPage extends StatefulWidget {
   const CheckoutPage({super.key});
@@ -59,9 +57,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
   Future<void> _placeOrder() async {
     if (_selectedAddress == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('يرجى اختيار عنوان التوصيل')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('يرجى اختيار عنوان التوصيل')),
+        );
+      }
       return;
     }
 
@@ -71,10 +71,18 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
     if (!authProvider.isAuthenticated || cartProvider.items.isEmpty) return;
 
+    // Get vendor ID from the first item (assuming all items are from the same vendor)
+    String? vendorId;
+    if (cartProvider.items.isNotEmpty) {
+      // In a real app, you might need to group items by vendor
+      // For now, we'll use a placeholder or get it from the product
+      vendorId = null; // This should be set based on your business logic
+    }
     final order = await ordersProvider.createOrder(
       userId: authProvider.currentUser!.id,
       userEmail: authProvider.currentUser!.email,
       userName: authProvider.currentUser!.fullName,
+      vendorId: vendorId,
       items: cartProvider.items,
       subtotal: cartProvider.subtotal,
       tax: cartProvider.tax,
@@ -95,18 +103,20 @@ class _CheckoutPageState extends State<CheckoutPage> {
       await cartProvider.clearCart(authProvider.currentUser!.id);
       
       // Navigate to order confirmation
-      Navigator.pushReplacementNamed(
-        context,
-        '/order-details',
-        arguments: {'orderId': order.id},
-      );
+      if (mounted) {
+        Navigator.pushReplacementNamed(
+          context,
+          '/order-details',
+          arguments: {'orderId': order.id},
+        );
       
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('تم إنشاء الطلب بنجاح'),
-          backgroundColor: AppTheme.primaryPink,
-        ),
-      );
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('تم إنشاء الطلب بنجاح'),
+            backgroundColor: AppTheme.primaryPink,
+          ),
+        );
+      }
     }
   }
 

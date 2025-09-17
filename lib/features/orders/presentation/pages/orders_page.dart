@@ -132,11 +132,13 @@ class _OrdersPageState extends State<OrdersPage> {
 
                           if (confirmed == true) {
                             await ordersProvider.cancelOrder(order.id);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('تم إلغاء الطلب بنجاح'),
-                              ),
-                            );
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('تم إلغاء الطلب بنجاح'),
+                                ),
+                              );
+                            }
                           }
                         }
                       : null,

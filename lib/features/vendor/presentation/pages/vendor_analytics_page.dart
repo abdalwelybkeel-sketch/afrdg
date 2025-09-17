@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
@@ -14,6 +15,7 @@ class VendorAnalyticsPage extends StatefulWidget {
 }
 
 class _VendorAnalyticsPageState extends State<VendorAnalyticsPage> {
+  String _selectedPeriod = 'month';
   @override
   void initState() {
     super.initState();
@@ -146,7 +148,7 @@ class _VendorAnalyticsPageState extends State<VendorAnalyticsPage> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              entry.key,
+                              _formatMonthKey(entry.key),
                               style: theme.textTheme.bodyLarge?.copyWith(
                                 fontWeight: FontWeight.w600,
                               ),
@@ -161,7 +163,7 @@ class _VendorAnalyticsPageState extends State<VendorAnalyticsPage> {
                           ],
                         ),
                       );
-                    }).toList(),
+                    }),
                 ],
               ),
             ),
@@ -171,3 +173,17 @@ class _VendorAnalyticsPageState extends State<VendorAnalyticsPage> {
     );
   }
 }
+  String _formatMonthKey(String monthKey) {
+    try {
+      final parts = monthKey.split('-');
+      if (parts.length == 2) {
+        final year = int.parse(parts[0]);
+        final month = int.parse(parts[1]);
+        final date = DateTime(year, month);
+        return DateFormat('MMMM yyyy', 'ar').format(date);
+      }
+      return monthKey;
+    } catch (e) {
+      return monthKey;
+    }
+  }

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'dart:io';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
@@ -15,6 +18,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
   final _formKey = GlobalKey<FormState>();
   final _fullNameController = TextEditingController();
   final _phoneController = TextEditingController();
+  final ImagePicker _picker = ImagePicker();
+  
+  File? _imageFile;
+  String? _imageUrl;
+  bool _isUploadingImage = false;
 
   @override
   void initState() {
@@ -23,6 +31,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     if (authProvider.currentUser != null) {
       _fullNameController.text = authProvider.currentUser!.fullName;
       _phoneController.text = authProvider.currentUser!.phoneNumber ?? '';
+      _imageUrl = authProvider.currentUser!.profileImage;
     }
   }
 
@@ -31,6 +40,62 @@ class _EditProfilePageState extends State<EditProfilePage> {
     _fullNameController.dispose();
     _phoneController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickImage() async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 80,
+      );
+
+      if (image != null) {
+        setState(() {
+          _imageFile = File(image.path);
+        });
+        await _uploadProfileImage();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('فشل اختيار الصورة')),
+        );
+      }
+    }
+  }
+
+  Future<void> _uploadProfileImage() async {
+    if (_imageFile == null) return;
+
+    setState(() {
+      _isUploadingImage = true;
+    });
+
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final fileName = 'profile_images/${authProvider.currentUser!.id}.jpg';
+      final ref = FirebaseStorage.instance.ref().child(fileName);
+
+      final uploadTask = ref.putFile(_imageFile!);
+      final snapshot = await uploadTask;
+      final downloadUrl = await snapshot.ref.getDownloadURL();
+
+      setState(() {
+        _imageUrl = downloadUrl;
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('فشل رفع الصورة')),
+        );
+      }
+    } finally {
+      setState(() {
+        _isUploadingImage = false;
+      });
+    }
   }
 
   Future<void> _saveProfile() async {
@@ -43,6 +108,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
       phoneNumber: _phoneController.text.trim().isEmpty 
           ? null 
           : _phoneController.text.trim(),
+      profileImage: _imageUrl,
     );
 
     if (success && mounted) {
@@ -100,10 +166,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       CircleAvatar(
                         radius: 60,
                         backgroundColor: AppTheme.lightPink,
-                        backgroundImage: authProvider.currentUser!.profileImage != null
-                            ? NetworkImage(authProvider.currentUser!.profileImage!)
-                            : null,
-                        child: authProvider.currentUser!.profileImage == null
+                        backgroundImage: _imageFile != null
+                            ? FileImage(_imageFile!) as ImageProvider
+                            : _imageUrl != null
+                                ? NetworkImage(_imageUrl!) as ImageProvider
+                                : null,
+                        child: _imageFile == null && _imageUrl == null
                             ? Icon(
                                 Icons.person,
                                 size: 60,
@@ -123,26 +191,31 @@ class _EditProfilePageState extends State<EditProfilePage> {
                               width: 2,
                             ),
                           ),
-                          child: IconButton(
-                            onPressed: () {
-                              // TODO: Change profile image
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('ميزة تغيير الصورة ستكون متاحة قريباً'),
+                          child: _isUploadingImage
+                              ? const Padding(
+                                  padding: EdgeInsets.all(8),
+                                  child: SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                    ),
+                                  ),
+                                )
+                              : IconButton(
+                                  onPressed: _pickImage,
+                                  icon: const Icon(
+                                    Icons.camera_alt,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
+                                  constraints: const BoxConstraints(
+                                    minWidth: 40,
+                                    minHeight: 40,
+                                  ),
+                                  padding: EdgeInsets.zero,
                                 ),
-                              );
-                            },
-                            icon: const Icon(
-                              Icons.camera_alt,
-                              color: Colors.white,
-                              size: 20,
-                            ),
-                            constraints: const BoxConstraints(
-                              minWidth: 40,
-                              minHeight: 40,
-                            ),
-                            padding: EdgeInsets.zero,
-                          ),
                         ),
                       ),
                     ],
@@ -310,7 +383,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                           ),
                         );
 
-                        if (confirmed == true) {
+                        if (confirmed == true && mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                               content: Text('ميزة حذف الحساب ستكون متاحة قريباً'),

@@ -322,11 +322,12 @@ class SupportProvider extends ChangeNotifier {
       // Update local state
       final ticketIndex = _tickets.indexWhere((t) => t.id == ticketId);
       if (ticketIndex != -1) {
-        final updatedMessages = List<TicketMessage>.from(_tickets[ticketIndex].messages)
-          ..add(ticketMessage);
+        // Reload the ticket to get updated messages
+        final updatedTicket = await getTicket(ticketId);
+        if (updatedTicket != null) {
+          _tickets[ticketIndex] = updatedTicket;
+        }
         
-        // Create a new ticket with updated messages
-        // Note: This is a simplified approach. In a real app, you might want to reload the ticket.
         notifyListeners();
       }
 

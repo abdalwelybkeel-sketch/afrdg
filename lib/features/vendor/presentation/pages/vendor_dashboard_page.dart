@@ -36,7 +36,6 @@ class _VendorDashboardPageState extends State<VendorDashboardPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       body: Consumer2<AuthProvider, VendorProvider>(
@@ -240,11 +239,13 @@ class _VendorDashboardPageState extends State<VendorDashboardPage> {
                           },
                           onStatusUpdate: (orderId, status) async {
                             await vendorProvider.updateOrderStatus(orderId, status);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('تم تحديث حالة الطلب'),
-                              ),
-                            );
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('تم تحديث حالة الطلب'),
+                                ),
+                              );
+                            }
                           },
                         ),
                       ],

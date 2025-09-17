@@ -95,7 +95,46 @@ class _VendorOrdersPageState extends State<VendorOrdersPage> {
                       arguments: {'orderId': order.id},
                     );
                   },
-                  onCancel: null, // Vendors can't cancel orders
+                  onCancel: order.status == OrderStatus.pending
+                      ? () async {
+                          final confirmed = await showDialog<bool>(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: const Text('رفض الطلب'),
+                              content: const Text('هل أنت متأكد من رفض هذا الطلب؟'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context, false),
+                                  child: const Text('لا'),
+                                ),
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context, true),
+                                  child: const Text(
+                                    'نعم، رفض',
+                                    style: TextStyle(color: Colors.red),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+
+                          if (confirmed == true && mounted) {
+                            final vendorProvider = Provider.of<VendorProvider>(
+                              context,
+                              listen: false,
+                            );
+                            await vendorProvider.updateOrderStatus(
+                              order.id,
+                              OrderStatus.cancelled,
+                            );
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('تم رفض الطلب'),
+                              ),
+                            );
+                          }
+                        }
+                      : null,
                 );
               },
             ),

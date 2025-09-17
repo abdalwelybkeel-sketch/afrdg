@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
@@ -21,6 +24,10 @@ class _AddAddressPageState extends State<AddAddressPage> {
   final _cityController = TextEditingController();
   final _phoneController = TextEditingController();
   bool _isDefault = false;
+  
+  GoogleMapController? _mapController;
+  LatLng? _selectedLocation;
+  bool _isLoadingLocation = false;
 
   @override
   void initState() {
@@ -31,6 +38,74 @@ class _AddAddressPageState extends State<AddAddressPage> {
       _cityController.text = widget.address!.city;
       _phoneController.text = widget.address!.phone;
       _isDefault = widget.address!.isDefault;
+      
+      // Set location if available
+      if (widget.address!.latitude != null && widget.address!.longitude != null) {
+        _selectedLocation = LatLng(
+          widget.address!.latitude!,
+          widget.address!.longitude!,
+        );
+      }
+    }
+    _getCurrentLocation();
+  }
+
+  Future<void> _getCurrentLocation() async {
+    setState(() {
+      _isLoadingLocation = true;
+    });
+
+    try {
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('تم رفض إذن الموقع')),
+            );
+          }
+          return;
+        }
+      }
+
+      final position = await Geolocator.getCurrentPosition();
+      final newLocation = LatLng(position.latitude, position.longitude);
+      
+      setState(() {
+        _selectedLocation = newLocation;
+      });
+
+      if (_mapController != null) {
+        _mapController!.animateCamera(
+          CameraUpdate.newLatLng(newLocation),
+        );
+      }
+
+      // Get address from coordinates
+      final placemarks = await placemarkFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
+
+      if (placemarks.isNotEmpty && mounted) {
+        final placemark = placemarks.first;
+        setState(() {
+          _addressController.text = 
+              '${placemark.street ?? ''}, ${placemark.subLocality ?? ''}';
+          _cityController.text = placemark.locality ?? '';
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('فشل في الحصول على الموقع')),
+        );
+      }
+    } finally {
+      setState(() {
+        _isLoadingLocation = false;
+      });
     }
   }
 
@@ -60,6 +135,8 @@ class _AddAddressPageState extends State<AddAddressPage> {
         address: _addressController.text.trim(),
         city: _cityController.text.trim(),
         phone: _phoneController.text.trim(),
+        latitude: _selectedLocation?.latitude,
+        longitude: _selectedLocation?.longitude,
         isDefault: _isDefault,
       );
     } else {
@@ -70,6 +147,8 @@ class _AddAddressPageState extends State<AddAddressPage> {
           address: _addressController.text.trim(),
           city: _cityController.text.trim(),
           phone: _phoneController.text.trim(),
+          latitude: _selectedLocation?.latitude,
+          longitude: _selectedLocation?.longitude,
           isDefault: _isDefault,
         ),
       );
@@ -95,162 +174,292 @@ class _AddAddressPageState extends State<AddAddressPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.address == null ? 'إضافة عنوان جديد' : 'تعديل العنوان'),
+        actions: [
+          IconButton(
+            onPressed: _getCurrentLocation,
+            icon: _isLoadingLocation
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.my_location),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              // Name Field
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: 'اسم العنوان',
-                  hintText: 'مثال: المنزل، العمل',
-                  prefixIcon: Icon(Icons.label_outline),
-                ),
-                validator: (value) {
-                  if (value?.isEmpty ?? true) {
-                    return 'يرجى إدخال اسم العنوان';
-                  }
-                  return null;
-                },
+        child: Column(
+          children: [
+            // Map
+            Container(
+              height: 250,
+              margin: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.withOpacity(0.3)),
               ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: _selectedLocation != null
+                    ? GoogleMap(
+                        initialCameraPosition: CameraPosition(
+                          target: _selectedLocation!,
+                          zoom: 15,
+                        ),
+                        onMapCreated: (GoogleMapController controller) {
+                          _mapController = controller;
+                        },
+                        onTap: (LatLng location) async {
+                          setState(() {
+                            _selectedLocation = location;
+                          });
 
-              const SizedBox(height: 16),
+                          // Get address from coordinates
+                          try {
+                            final placemarks = await placemarkFromCoordinates(
+                              location.latitude,
+                              location.longitude,
+                            );
 
-              // Address Field
-              TextFormField(
-                controller: _addressController,
-                decoration: const InputDecoration(
-                  labelText: 'العنوان التفصيلي',
-                  hintText: 'الشارع، رقم المبنى، الحي',
-                  prefixIcon: Icon(Icons.location_on_outlined),
-                ),
-                maxLines: 3,
-                validator: (value) {
-                  if (value?.isEmpty ?? true) {
-                    return 'يرجى إدخال العنوان التفصيلي';
-                  }
-                  return null;
-                },
+                            if (placemarks.isNotEmpty && mounted) {
+                              final placemark = placemarks.first;
+                              setState(() {
+                                _addressController.text = 
+                                    '${placemark.street ?? ''}, ${placemark.subLocality ?? ''}';
+                                _cityController.text = placemark.locality ?? '';
+                              });
+                            }
+                          } catch (e) {
+                            // Handle error silently
+                          }
+                        },
+                        markers: _selectedLocation != null
+                            ? {
+                                Marker(
+                                  markerId: const MarkerId('selected_location'),
+                                  position: _selectedLocation!,
+                                  infoWindow: const InfoWindow(
+                                    title: 'الموقع المحدد',
+                                  ),
+                                ),
+                              }
+                            : {},
+                      )
+                    : Container(
+                        color: Colors.grey[200],
+                        child: const Center(
+                          child: CircularProgressIndicator(),
+                        ),
+                      ),
               ),
+            ),
 
-              const SizedBox(height: 16),
-
-              // City Field
-              TextFormField(
-                controller: _cityController,
-                decoration: const InputDecoration(
-                  labelText: 'المدينة',
-                  prefixIcon: Icon(Icons.location_city_outlined),
-                ),
-                validator: (value) {
-                  if (value?.isEmpty ?? true) {
-                    return 'يرجى إدخال المدينة';
-                  }
-                  return null;
-                },
-              ),
-
-              const SizedBox(height: 16),
-
-              // Phone Field
-              TextFormField(
-                controller: _phoneController,
-                decoration: const InputDecoration(
-                  labelText: 'رقم الهاتف',
-                  prefixIcon: Icon(Icons.phone_outlined),
-                ),
-                keyboardType: TextInputType.phone,
-                validator: (value) {
-                  if (value?.isEmpty ?? true) {
-                    return 'يرجى إدخال رقم الهاتف';
-                  }
-                  return null;
-                },
-              ),
-
-              const SizedBox(height: 24),
-
-              // Default Address Switch
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppTheme.lightPink.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: AppTheme.lightPink.withOpacity(0.3),
-                  ),
-                ),
-                child: Row(
+            // Form
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Form(
+                key: _formKey,
+                child: Column(
                   children: [
-                    Icon(
-                      Icons.home_outlined,
-                      color: AppTheme.primaryPink,
+                    // Name Field
+                    TextFormField(
+                      controller: _nameController,
+                      decoration: const InputDecoration(
+                        labelText: 'اسم العنوان',
+                        hintText: 'مثال: المنزل، العمل',
+                        prefixIcon: Icon(Icons.label_outline),
+                      ),
+                      validator: (value) {
+                        if (value?.isEmpty ?? true) {
+                          return 'يرجى إدخال اسم العنوان';
+                        }
+                        return null;
+                      },
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+
+                    const SizedBox(height: 16),
+
+                    // Address Field
+                    TextFormField(
+                      controller: _addressController,
+                      decoration: const InputDecoration(
+                        labelText: 'العنوان التفصيلي',
+                        hintText: 'الشارع، رقم المبنى، الحي',
+                        prefixIcon: Icon(Icons.location_on_outlined),
+                      ),
+                      maxLines: 3,
+                      validator: (value) {
+                        if (value?.isEmpty ?? true) {
+                          return 'يرجى إدخال العنوان التفصيلي';
+                        }
+                        return null;
+                      },
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // City Field
+                    TextFormField(
+                      controller: _cityController,
+                      decoration: const InputDecoration(
+                        labelText: 'المدينة',
+                        prefixIcon: Icon(Icons.location_city_outlined),
+                      ),
+                      validator: (value) {
+                        if (value?.isEmpty ?? true) {
+                          return 'يرجى إدخال المدينة';
+                        }
+                        return null;
+                      },
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Phone Field
+                    TextFormField(
+                      controller: _phoneController,
+                      decoration: const InputDecoration(
+                        labelText: 'رقم الهاتف',
+                        prefixIcon: Icon(Icons.phone_outlined),
+                      ),
+                      keyboardType: TextInputType.phone,
+                      validator: (value) {
+                        if (value?.isEmpty ?? true) {
+                          return 'يرجى إدخال رقم الهاتف';
+                        }
+                        return null;
+                      },
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // Location Info
+                    if (_selectedLocation != null)
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AppTheme.lightPink.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: AppTheme.lightPink.withOpacity(0.3),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.location_on,
+                              color: AppTheme.primaryPink,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'الإحداثيات المحددة',
+                                    style: theme.textTheme.bodyLarge?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  Text(
+                                    'خط العرض: ${_selectedLocation!.latitude.toStringAsFixed(6)}',
+                                    style: theme.textTheme.bodySmall,
+                                  ),
+                                  Text(
+                                    'خط الطول: ${_selectedLocation!.longitude.toStringAsFixed(6)}',
+                                    style: theme.textTheme.bodySmall,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                    const SizedBox(height: 24),
+
+                    // Default Address Switch
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppTheme.lightPink.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: AppTheme.lightPink.withOpacity(0.3),
+                        ),
+                      ),
+                      child: Row(
                         children: [
-                          Text(
-                            'العنوان الافتراضي',
-                            style: theme.textTheme.bodyLarge?.copyWith(
-                              fontWeight: FontWeight.w600,
+                          Icon(
+                            Icons.home_outlined,
+                            color: AppTheme.primaryPink,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'العنوان الافتراضي',
+                                  style: theme.textTheme.bodyLarge?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                Text(
+                                  'سيتم استخدام هذا العنوان افتراضياً في الطلبات',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.onBackground
+                                        .withOpacity(0.6),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          Text(
-                            'سيتم استخدام هذا العنوان افتراضياً في الطلبات',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onBackground
-                                  .withOpacity(0.6),
-                            ),
+                          Switch(
+                            value: _isDefault,
+                            onChanged: (value) {
+                              setState(() {
+                                _isDefault = value;
+                              });
+                            },
+                            activeColor: AppTheme.primaryPink,
                           ),
                         ],
                       ),
                     ),
-                    Switch(
-                      value: _isDefault,
-                      onChanged: (value) {
-                        setState(() {
-                          _isDefault = value;
-                        });
+
+                    const SizedBox(height: 32),
+
+                    // Save Button
+                    Consumer<AddressesProvider>(
+                      builder: (context, addressesProvider, child) {
+                        return SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: addressesProvider.isLoading ? null : _saveAddress,
+                            child: addressesProvider.isLoading
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.white,
+                                      ),
+                                    ),
+                                  )
+                                : Text(widget.address == null ? 'إضافة العنوان' : 'حفظ التغييرات'),
+                          ),
+                        );
                       },
-                      activeColor: AppTheme.primaryPink,
                     ),
+
+                    const SizedBox(height: 32),
                   ],
                 ),
               ),
-
-              const SizedBox(height: 32),
-
-              // Save Button
-              Consumer<AddressesProvider>(
-                builder: (context, addressesProvider, child) {
-                  return SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: addressesProvider.isLoading ? null : _saveAddress,
-                      child: addressesProvider.isLoading
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  Colors.white,
-                                ),
-                              ),
-                            )
-                          : Text(widget.address == null ? 'إضافة العنوان' : 'حفظ التغييرات'),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

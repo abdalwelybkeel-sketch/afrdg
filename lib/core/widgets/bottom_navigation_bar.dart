@@ -51,9 +51,9 @@ class CustomBottomNavigationBar extends StatelessWidget {
               ),
               _buildNavItem(
                 context,
-                icon: Icons.local_offer_outlined,
-                activeIcon: Icons.local_offer,
-                label: 'العروض',
+                icon: Icons.receipt_long_outlined,
+                activeIcon: Icons.receipt_long,
+                label: 'الطلبات',
                 index: 2,
                 isActive: navigationProvider.currentIndex == 2,
                 onTap: () => navigationProvider.setIndex(2),
